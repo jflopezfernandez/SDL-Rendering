@@ -34,6 +34,16 @@ SDL_Texture* loadTexture(const std::string& filename, SDL_Renderer *renderer) {
 	return texture;
 }
 
+void RenderTexture(SDL_Texture *texture, SDL_Renderer *renderer, int x, int y) {
+	// Setup the destination rectangle to be at the position we want
+	SDL_Rect destination;
+	destination.x = x;
+	destination.y = y;
+
+	// Query the texture to get its width and height to use
+	SDL_QueryTexture(texture, NULL, NULL, &destination.w, &destination.x);
+	SDL_RenderCopy(renderer, texture, NULL, &destination);
+}
 
 
 
@@ -53,7 +63,7 @@ int main(int argc, char *argv[])
 	 */
 
 	if (SDL_Init(SDL_INIT_VIDEO)) {
-		std::cout << "SDL_Init Error: " << SDL_GetError() << '\n';
+		LogSDLError(std::cerr, "SDL_Init");
 
 		return EXIT_FAILURE;
 	}
@@ -79,10 +89,10 @@ int main(int argc, char *argv[])
 	 *
 	 */
 
-	SDL_Window *mainWindow = SDL_CreateWindow("Hello, World!", 100, 100, 640, 480, SDL_WINDOW_SHOWN);
+	SDL_Window *mainWindow = SDL_CreateWindow("Hello, World!", 100, 100, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
 
 	if (!mainWindow) {
-		std::cout << "SDL_CreateWindow Error: " << SDL_GetError() << '\n';
+		LogSDLError(std::cerr, "CreateWindow");
 		
 		SDL_Quit();
 		return EXIT_FAILURE;
@@ -113,36 +123,8 @@ int main(int argc, char *argv[])
 	if (!renderer) {
 		SDL_DestroyWindow(mainWindow);
 		
-		std::cout << "SDL_CreateRenderer Error: " << SDL_GetError() << '\n';
-		
-		SDL_Quit();
-		return EXIT_FAILURE;
-	}
+		LogSDLError(std::cerr, "CreateRenderer");
 
-	/** Function: SDL_LoadBMP
-	 *
-	 *  Description:
-	 *  To render a bitmap (BMP) image, we'll need to load it into memory and then onto the rendering
-	 *  platform we're using (in this case the GPU). We can load the image with SDL_LoadBMP, which gives
-	 *  us back a SDL_Surface pointer (*) that we can then take and upload to a SDL_Texture that the
-	 *  renderer is able to use.
-	 *
-	 *  Parameters:
-	 *    1. File path of image
-	 *
-	 *  Return: SDL_Surface*
-	 *
-	 */
-
-	std::string imagePath = "C:/Users/jflop/Downloads/swirl_effect.bmp";
-	SDL_Surface *bmp = SDL_LoadBMP(imagePath.c_str());
-
-	if (!bmp) {
-		SDL_DestroyRenderer(renderer);
-		SDL_DestroyWindow(mainWindow);
-		
-		std::cout << "SDL_LoadBMP Error: " << SDL_GetError() << '\n';
-		
 		SDL_Quit();
 		return EXIT_FAILURE;
 	}
@@ -163,36 +145,42 @@ int main(int argc, char *argv[])
 	 *
 	 */
 
-	SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, bmp);
-	SDL_FreeSurface(bmp);
+	SDL_Texture *background = loadTexture("C:\\Users\\jflop\\source\\repos\\sdl-test\\sdl-test\\img\\background.bmp", renderer);
+	SDL_Texture *foreground = loadTexture("C:\\Users\\jflop\\source\\repos\\sdl-test\\sdl-test\\img\\foreground.bmp", renderer);
 
-	if (!texture) {
+	if ((!background) || (!foreground)) {
 		SDL_DestroyRenderer(renderer);
 		SDL_DestroyWindow(mainWindow);
 
-		std::cout << "SDL_CreateTextureFromSurface Error: " << SDL_GetError() << '\n';
+		LogSDLError(std::cerr, "LoadTexture");
 
 		SDL_Quit();
 		return EXIT_FAILURE;
 	}
 
-	/** To draw the texture to the screen, first we'll clear the renderer, render our texture, and
-	 *  then present the update screen to show the result. Since we want to render the whole image
-	 *  and have it stretch to fill the screen, we'll pass NULL as the source and destination
-	 *  rectangles for SDL_RenderCopy. We'll also want to keep the window open for a bit so we can
-	 *  see the result before the program exits, so we'll add in a call to SDL_Delay.
-	 *
-	 *  We'll place all this rendering code within the main loop of our program, which for now will
-	 *  be a simple for loop. Each iteration through our loop, we will sleep for a second, so we can
-	 *  increase or decrease the counter to make our program run for a longer or shorter period. When
-	 *  we get to event handling we'll instead track a boolean that indicates if the user wants to
-	 *  quit our program (e.g... if they clicked 'x' on the window), and exit our loop in that case.
-	 *
-	 */
-
-	for (auto i = 0; i < 3; ++i) {
+	for (auto i = 0; i < 3; i++) {
 		SDL_RenderClear(renderer);
-		SDL_RenderCopy(renderer, texture, NULL, NULL);
+
+		int bW = 0;
+		int bH = 0;
+
+		SDL_QueryTexture(background, NULL, NULL, &bW, &bW);
+
+		RenderTexture(background, renderer, 0, 0);
+		RenderTexture(background, renderer, bW, 0);
+		RenderTexture(background, renderer, 0, bH);
+		RenderTexture(background, renderer, bW, bH);
+
+		int iW = 0;
+		int iH = 0;
+
+		SDL_QueryTexture(foreground, NULL, NULL, &iW, &iH);
+
+		int x = SCREEN_WIDTH / 2 - iW / 2;
+		int y = SCREEN_HEIGHT / 2 - iH / 2;
+
+		RenderTexture(foreground, renderer, x, y);
+
 		SDL_RenderPresent(renderer);
 		SDL_Delay(1000);
 	}
@@ -206,7 +194,8 @@ int main(int argc, char *argv[])
 	 *
 	 */
 
-	SDL_DestroyTexture(texture);
+	SDL_DestroyTexture(background);
+	SDL_DestroyTexture(foreground);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(mainWindow);
 
